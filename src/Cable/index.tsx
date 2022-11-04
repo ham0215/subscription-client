@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import ActionCable from 'actioncable';
 
 type Message = {
@@ -9,6 +9,7 @@ type Message = {
 export default function Cable() {
   const [receivedMessage, setReceivedMessage] = useState<Message>();
   const [text, setText] = useState('');
+  const [input, setInput] = useState('');
   const [subscription, setSubscription] = useState<ActionCable.Channel>();
   const cable = useMemo(() => ActionCable.createConsumer('wss://localhost:3020/cable'), []);
 
@@ -19,9 +20,9 @@ export default function Cable() {
     setSubscription(sub);
   }, [cable]);
 
-  const handleSend = useCallback(() => {
-    subscription?.perform('chat', { body: 'hoge' })
-  }, [subscription]);
+  const handleSend = () => {
+    subscription?.perform('chat', { body: input })
+  };
 
   useEffect(() => {
     if (!receivedMessage) return;
@@ -35,14 +36,18 @@ export default function Cable() {
     history?.scrollTo(0, history.scrollHeight);
   }, [text]);
 
+  const onChangeInput = (e) => {
+    setInput(e.currentTarget.value);
+  };
+
   return (
     <div>
       <div>
         <textarea id="history" readOnly style={{ width: "500px", height: "200px" }} value={text} />
       </div>
       <div>
-        <input type="text" style={{ width: "400px", marginRight: "10px" }}></input>
-        <button onClick={handleSend}>
+        <input type="text" style={{ width: "400px", marginRight: "10px" }} onChange={onChangeInput} value={input} />
+        <button onClick={handleSend} disabled={input === ''}>
           send
         </button>
       </div>
