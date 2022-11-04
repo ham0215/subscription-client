@@ -3,18 +3,20 @@ import ActionCable from 'actioncable';
 
 export function Message() {
   const [message, setMessage] = useState('');
+  const [subscription, setSubscription] = useState<ActionCable.Channel>();
   const cable = useMemo(() => ActionCable.createConsumer('wss://localhost:3020/cable'), []);
-  const subscription = useMemo(() => {
-    return cable.subscriptions.create("ChatChannel", {
-      received: setMessage
+  useEffect(() => {
+    const sub = cable.subscriptions.create({ channel: "ChatChannel" }, {
+      received: (data) => setMessage(data.body)
     });
-  }, []);
+    setSubscription(sub);
+  }, [cable]);
 
   return (
     <div>
-      <h1>{message}</h1>
+      <div>{message}</div>
       <button onClick={() => {
-        subscription.perform('received', { body: 'hoge' })
+        subscription?.perform('received', { body: 'hoge' })
       }}>
         send
       </button>
