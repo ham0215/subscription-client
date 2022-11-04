@@ -21,7 +21,8 @@ export default function Cable() {
   }, [cable]);
 
   const handleSend = () => {
-    subscription?.perform('chat', { body: input })
+    subscription?.perform('chat', { body: input });
+    setInput('');
   };
 
   useEffect(() => {
@@ -46,7 +47,18 @@ export default function Cable() {
         <textarea id="history" readOnly style={{ width: "500px", height: "200px" }} value={text} />
       </div>
       <div>
-        <input type="text" style={{ width: "400px", marginRight: "10px" }} onChange={onChangeInput} value={input} />
+        <input
+          type="text"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
+          style={{ width: "400px", marginRight: "10px" }}
+          onChange={onChangeInput}
+          value={input}
+        />
         <button onClick={handleSend} disabled={input === ''}>
           send
         </button>
