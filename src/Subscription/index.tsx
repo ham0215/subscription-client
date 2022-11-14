@@ -1,5 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
-import ActionCable from 'actioncable';
+import { split, ApolloClient, HttpLink, InMemoryCache, NormalizedCacheObject } from '@apollo/client';
+import { ActionCableLink } from 'graphql-ruby-client';
+import { getMainDefinition } from '@apollo/client/utilities';
+import { createConsumer } from '@rails/actioncable';
 
 type Message = {
   sender: string;
@@ -10,14 +13,44 @@ export default function Subscription() {
   const [receivedMessage, setReceivedMessage] = useState<Message>();
   const [text, setText] = useState('');
   const [input, setInput] = useState('');
-  const [subscription, setSubscription] = useState<ActionCable.Channel>();
-  const cable = useMemo(() => ActionCable.createConsumer('wss://localhost:3020/cable'), []);
+  const [client, setClient] = useState<ApolloClient<NormalizedCacheObject>>();
+  const cable = useMemo(() => createConsumer('wss://localhost:3020/cable'), []);
 
   useEffect(() => {
-    const sub = cable.subscriptions.create({ channel: "ChatChannel" }, {
-      received: (msg) => setReceivedMessage(msg)
+    const httpLink = new HttpLink({
+      uri: '/graphql',
+      credentials: 'include'
     });
-    setSubscription(sub);
+
+    // const hasSubscriptionOperation = ({ query: { definitions } }) => {
+    //   return definitions.some(
+    //     ({ kind, operation }) => kind === 'OperationDefinition' && operation === 'subscription'
+    //   )
+    // }
+
+    // const link = ApolloLink.split(
+    //   hasSubscriptionOperation,
+    //   new ActionCableLink({ cable }),
+    //   httpLink
+    // );
+    const wsLink = new ActionCableLink({ cable });
+    const splitLink = split(
+      ({ query }) => {
+        const definition = getMainDefinition(query);
+        return (
+          definition.kind === 'OperationDefinition' &&
+          definition.operation === 'subscription'
+        );
+      },
+      wsLink,
+      httpLink,
+    );
+
+    const client = new ApolloClient({
+      link: splitLink,
+      cache: new InMemoryCache()
+    });
+    setClient(client);
   }, [cable]);
 
   const handleSend = () => {
